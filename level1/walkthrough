@@ -1,7 +1,13 @@
 # Level1
 
 ## Analysis
-Using ghidra we saw that the program is vulnerable to a buffer overflow and that it has a function called run but it is not used in the program. We can use this function to get a shell.
+
+We notice main was simple and using `gets`. We found "secret" function by decompile binary using `gdb`. A `run` that create shell. This is interesting because binary is executed with suid right so if we arrive to execute this function, it will open shell with `level2` right.
+
+We investigate to find a way to execute this function. After many research we found attack named "stack smashing attack" that can be used with `gets` function. Interesting right?
+
+We made python script to fill the buffer and write an address at the end (the address of run function). The impact of doing this is to jump on run function after get entry standard. Now we get shell with level2 right
+
 
 ```bash
 level1@RainFall:~$ (python -c "import struct; print('A' * 76 + struct.pack('I', 0x8048472))";cat) | ./level1

