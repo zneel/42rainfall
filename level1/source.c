@@ -8,9 +8,9 @@ void run(void) {
   return;
 }
 
-void main(void) {
+int main(void) {
   char c[76];
 
   gets(c);
-  return;
+  return 0;
 }
