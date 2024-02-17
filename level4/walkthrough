@@ -2,6 +2,10 @@
 
 ## Analysis
 
+## Attack type: Format string vulnerability to modify a global variable
+
+
+```bash
 (gdb) disassemble p
 Dump of assembler code for function p:
    0x08048444 <+0>:     push   %ebp
@@ -14,8 +18,9 @@ Dump of assembler code for function p:
    0x08048456 <+18>:    ret
 End of assembler dump.
 (gdb)
-
+```
 The global m address is 08049810
+
 ```bash
 level4@RainFall:~$ objdump -t level4 | grep m
 level4:     file format elf32-i386

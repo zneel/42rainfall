@@ -2,6 +2,8 @@
 
 ## Analysis
 
+## Attack type: Format string vulnerability to overwrite Global Offset Table (GOT)
+
 We started by checking the file binary with objdump and found the following stuff:
 ```bash
 080484a4 <o>:

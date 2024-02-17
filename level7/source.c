@@ -1,32 +1,42 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <unistd.h>
 
-void m(void *param_1, int param_2, char *param_3, int param_4, int param_5) {
-  time_t tVar1;
+char c[68];
 
-  tVar1 = time((time_t *)0x0);
-  printf("%s - %d\n", c, tVar1);
+void m() {
+  time_t t;
+
+  t = time((time_t *)NULL);
+  printf("%s - %d\n", c, t);
   return;
 }
 
-int main(undefined4 param_1, int param_2) {
-  undefined4 *puVar1;
-  void *pvVar2;
-  undefined4 *puVar3;
+struct s {
+  int a;
+  void *heap_space;
+};
+
+int main(int ac, char **av) {
+  struct s *s1;
+  void *var2;
+  struct s *s2;
   FILE *__stream;
 
-  puVar1 = (void *)malloc(8);
-  *puVar1 = 1;
-  pvVar2 = malloc(8);
-  puVar1[1] = pvVar2;
-  puVar3 = (void *)malloc(8);
-  *puVar3 = 2;
-  pvVar2 = malloc(8);
-  puVar3[1] = pvVar2;
-  strcpy((char *)puVar1[1], *(char **)(param_2 + 4));
-  strcpy((char *)puVar3[1], *(char **)(param_2 + 8));
+  s1 = malloc(8);
+  s1->a = 1;
+  var2 = malloc(8);
+  s1->heap_space = var2;
+  s2 = malloc(8);
+  s2->a = 2;
+  var2 = malloc(8);
+  s2->heap_space = var2;
+  strcpy(s1->heap_space, av[1]);
+  strcpy(s2->heap_space, av[2]);
   __stream = fopen("/home/user/level8/.pass", "r");
-  fgets(c, 0x44, __stream);
+  fgets(c, 68, __stream);
   puts("~~");
   return 0;
 }

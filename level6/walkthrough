@@ -1,6 +1,8 @@
-# Level 05
+# Level 06
 
 ## Analysis
+
+## Attack type: Stack Buffer overflow to overwrite function pointer
 
 We started by checking the file binary with objdump and found the following stuff:
 ```bash
