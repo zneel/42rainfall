@@ -1,0 +1,23 @@
+# Bonus 0
+
+## Analysis
+
+## Attack type: Buffer overflow
+
+We decompile binary but it was very difficult to understand the full binary. We used boltdog to open it with different decompile tool. We understand that it combine two buffer. After adding the first buffer, the script remove the \0 from the final buffer, then use strcat. This is not a good idea cause it can lead overflow. We starting to use objdump to analyse code, we didn't find find any usage of call system. It leads us to think about usin shell code injection. But we didn't really find a way to exploit buffer with code initially, du to small size of them, and also the padding between. We read (a lot again...) to find different way to inject shell code payload in program and finally found a way through envvironment variable. This is describe here: https://dhavalkapil.com/blogs/Shellcode-Injection/.
+
+But we still need to find a way to execute our payload. Using (https://wiremask.eu/tools/buffer-overflow-pattern-generator/) to generate pattern, we found that second buffer have potential injection on the offset 9 when the first buffer is full.
+
+We started to use gdb to search a way to get the address of environment variable because we need to know the value to overrride on eip pointer. It must be on the `SHELLCODE` environment value. Sadly when we arrived to execute the payload, it seems something blog us to identify as bonus1. We supposed that gdb blocked this and we tried to execute the same payload without using it. And surprise, it failed! But why? The reason is that environment between gdb and execution from shell doesn't load the same environement. We finally found one trick using C program and print the memory address to get the full payload in shell environment.
+
+
+```bash
+bonus0@RainFall:~$ (python -c "print 'A'*200" ; python -c "print 9 * 'A' + '\xcc\xd9\xff\xbf' + 40 * 'A'";cat) | ./bonus0
+ -
+ -
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAA�AAAAAAA� AAAAAAAAA�AAAAAAA�
+whoami
+bonus1
+cat /home/user/bonus1/.pass
+cd1f77a585965341c37a1774a1d1686326e1fc53aaa5459c840409d4d06523c9
+```
