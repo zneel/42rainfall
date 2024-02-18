@@ -4,13 +4,13 @@
 
 char *p() {
   char s[76];
-  const void *v2;
-  unsigned int retaddr;
+  void *v2;
+  void *retaddr;
 
   fflush(stdout);
   gets(s);
-  v2 = (const void *)retaddr;
-  if ((retaddr & 0xb0000000) == 0xb0000000) {
+  v2 = retaddr;
+  if (((unsigned int)retaddr & 0xb0000000) == 0xb0000000) {
     printf("(%p)\n", v2);
     exit(1);
   }
@@ -18,4 +18,7 @@ char *p() {
   return strdup(s);
 }
 
-int main(int argc, const char **argv, const char **envp) { return p(); }
+int main(int argc, const char **argv, const char **envp) {
+  p();
+  return 0;
+}

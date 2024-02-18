@@ -2,6 +2,8 @@
 
 ## Analysis
 
+## Attack type: ret2libc
+
 We started to play with binary, it seems to read on stdin and print on stdout the string we passed.
 
 ```bash

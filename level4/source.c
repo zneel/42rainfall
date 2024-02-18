@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
+
 int m;
+
 int p(char *format) { return printf(format); }
 
 int n() {

