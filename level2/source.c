@@ -8,8 +8,11 @@ char *p() {
   void *retaddr;
 
   fflush(stdout);
+  // IEP should be overwritten with the return address from strdup and jump on a
+  // heap address.
   gets(s);
   v2 = retaddr;
+  // Prevent the buffer overflow to overwrite the return address on the stack.
   if (((unsigned int)retaddr & 0xb0000000) == 0xb0000000) {
     printf("(%p)\n", v2);
     exit(1);

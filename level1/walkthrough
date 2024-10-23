@@ -4,14 +4,14 @@
 
 [stack-smashing-attack](https://eric-lo.gitbook.io/stack-smashing-attack/asm)
 
-We notice main was simple and using `gets`. We found "secret" function by decompile binary using `gdb`. A `run` that create shell. This is interesting because binary is executed with suid right so if we arrive to execute this function, it will open shell with `level2` right.
+We noticed that the `main` function was simple and used `gets`. By decompiling the binary using `gdb`, we found a "secret" function named `run` that creates a shell (`info functions`). This is significant because the binary is executed with SUID rights, so if we manage to execute this function, it will open a shell with `level2` privileges.
 
-We investigate to find a way to execute this function. After many research we found attack named "stack smashing attack" that can be used with `gets` function. Interesting right?
+We investigated ways to execute this function. After extensive research, we discovered an attack named "stack smashing attack" that can be exploited using the `gets` function. Interesting, right?
 
-We made python script to fill the buffer and write an address at the end (the address of run function). The impact of doing this is to jump on run function after get entry standard. Now we get shell with level2 right
+We created a Python script to fill the buffer and write an address at the end (the address of the `run` function). The impact of doing this is to jump to the `run` function after the buffer overflow. Now, we get a shell with `level2` privileges.
 
 ```bash
-level1@RainFall:~$ (python -c "import struct; print('A' * 76 + struct.pack('I', 0x8048472))";cat) | ./level1
+level1@RainFall:~$ (python -c "import struct; print('A' * 76 + struct.pack('I', 0x8048444))";cat) | ./level1
 whoami
 level2
 cat /home/user/level2/.pass

