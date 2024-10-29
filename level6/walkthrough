@@ -54,7 +54,7 @@ level6@RainFall:~$ objdump -d level6
  80484d3:	c3                   	ret
 
 ```
-There is two functions `m` and `n`. After decompile it on ghidra we saw that `n` was never call. We read main function and we undestood that there is two variable on the heap. One them is pointer of function, which is call after doing a strcpy. We directly thinking about the overflow on strcpy to override the content pointed by the pointer of function. We simply made mask using (https://wiremask.eu/tools/buffer-overflow-pattern-generator/) test the poadding between those 2 variables (another way also do to verify this value is to use gdb).
+There are two functions, `m` and `n`. After decompiling it on Ghidra, we saw that `n` was never called. We read the main function and understood that there are two variables on the heap. One of them is a function pointer, which is called after performing a `strcpy`. We immediately thought about the overflow on `strcpy` to override the content pointed to by the function pointer. We simply created a pattern using [Wiremask's Buffer Overflow Pattern Generator](https://wiremask.eu/tools/buffer-overflow-pattern-generator/) to test the padding between these two variables (another way to verify this value is to use GDB).
 
 ```bash
 (gdb) r "Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9Ac0Ac1Ac2Ac3Ac4Ac5Ac6Ac7Ac8Ac9Ad0Ad1Ad2Ad3Ad4Ad5Ad6Ad7Ad8Ad9Ae0Ae1Ae2Ae3Ae4Ae5Ae6Ae7Ae8Ae9Af0Af1Af2Af3Af4Af5Af6Af7Af8Af9Ag0Ag1Ag2Ag3Ag4Ag5Ag"
@@ -64,7 +64,8 @@ Program received signal SIGSEGV, Segmentation fault.
 0x41346341 in ?? ()
 ```
 
-So the offset is 72, so after copying 72, we can override the content pointed by the pointer of function. By reading the output of objdump, we know that `n` address is `08048454`.
+So the offset is 72, so after copying 72 bytes, we can override the content pointed to by the function pointer. By reading the output of objdump, we know that the address of `n` is `08048454`.
+
 We have everything to build the payload:
 
 ```bash
