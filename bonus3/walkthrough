@@ -4,7 +4,7 @@
 
 ## Attack type: Bad developer?
 
-We decompile it on `ghydra`. We saw that the program need one argument, that with be passed in atoi function. It also have a buffer named `ptr` of 132 bytes. The first argument will be transformed as number, and used as an index to set a `\0` in a buffer `ptr`. So, from this interpretation, the first argument can be used to overflow the buffer on stack to put a `\0`, but we didn't found exploit based on this `\0`, we can't inject address, override more than one byte etc etc.
+We decompile it on `ghidra`. We saw that the program need one argument, that with be passed in atoi function. It also have a buffer named `ptr` of 132 bytes. The first argument will be transformed as number, and used as an index to set a `\0` in a buffer `ptr`. So, from this interpretation, the first argument can be used to overflow the buffer on stack to put a `\0`, but we didn't found exploit based on this `\0`, we can't inject address, override more than one byte etc etc.
 
 There is also on line in source which capt our attention because it can lead us to open a shell as `end` user: `!strcmp(ptr, argv[1])`
 
