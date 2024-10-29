@@ -4,9 +4,9 @@
 
 ## Attack type: Heap Buffer overflow to pass a condition
 
-We decompile code with dogbolt https://dogbolt.org/?id=c81dd233-7ccb-4ab8-8074-27857c96eb14 because ghidra output was not very clean. It seems the program is essentially a loop where you enter some args to execute action. Each loop, printf function show us two addresses. We found that those varaiables are globals pointer and both pointer will be initialyze on heap. The main goal is to execute this call `system("/bin/sh");`, this is conditioned by the existant of char at the address pointed by `auth` global + 32. **But** we can't initialyse the `auth` variable with a string that exceed 30 chars.
+We decompiled the code using Dogbolt (https://dogbolt.org/?id=c81dd233-7ccb-4ab8-8074-27857c96eb14) because the Ghidra output was not very clean. It seems the program is essentially a loop where you enter some arguments to execute actions. Each loop, the `printf` function shows us two addresses. We found that those variables are global pointers and both pointers will be initialized on the heap. The main goal is to execute this call `system("/bin/sh");`, which is conditioned by the existence of a character at the address pointed to by the `auth` global + 32. **However**, we can't initialize the `auth` variable with a string that exceeds 30 characters.
 
-We started to open binary with gdb to understand the heap state when you initialyse globals. First command to initialyse `auth` is `auth [login]` and to initialyse `service`, you have to use the command `service`, that perform strdup, with `service[string]`. Let's start to look the heap.
+We started by opening the binary with GDB to understand the heap state when you initialize globals. The first command to initialize `auth` is `auth [login]`, and to initialize `service`, you have to use the command `service`, which performs `strdup`, with `service[string]`. Let's start by looking at the heap.
 
 ```bash
 level8@RainFall:~$ gdb level8
