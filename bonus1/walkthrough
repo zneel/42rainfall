@@ -2,7 +2,9 @@
 
 ## Analysis
 
-## Attack type: Buffer overflow
+## Attack type: int overflow
+
+In short we're trying to find a value < 10 that will be equal to 0x574f4c46 when multiplied by 4 (with the overflow included)
 
 ```bash
 (gdb) r 1 Aa0Aa1Aa2Aa3Aa4Aa5Aa6Aa7Aa8Aa9Ab0Ab1Ab2Ab3Ab4Ab5Ab6Ab7Ab8Ab9
